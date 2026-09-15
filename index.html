@@ -187,7 +187,7 @@
       <a href="random/?view=1" class="btn" title="View random wallpaper interactively">Random Viewer</a>
       <a href="count" class="btn" target="_blank" title="API returning only number of wallpapers">Count API</a>
       <a href="wallpapers.json" class="btn" target="_blank">API JSON</a>
-      <input type="number" id="jump-input" class="search-box" min="1" max="20000" placeholder="Go to # (1-20000)...">
+      <input type="number" id="jump-input" class="search-box" min="1" max="20200" placeholder="Go to # (1-20200)...">
     </div>
   </header>
 
@@ -195,14 +195,14 @@
     <div class="toolbar-group">
       <span id="counter-text">Showing wallpapers</span>
       <span style="opacity: 0.35; margin: 0 0.35rem;">|</span>
-      <span>Updated: 2026-09-15 07:28 UTC</span>
+      <span>Updated: 2026-09-15 07:36 UTC</span>
     </div>
     <div class="toolbar-group">
       <span>Per page:</span>
       <button class="btn per-page-btn" data-size="60">60</button>
       <button class="btn per-page-btn" data-size="120">120</button>
       <button class="btn per-page-btn" data-size="240">240</button>
-      <button class="btn per-page-btn" data-size="all">All (20,000)</button>
+      <button class="btn per-page-btn" data-size="all">All (20,200)</button>
     </div>
   </div>
 
@@ -220,7 +220,7 @@
   </footer>
 
   <script>
-    const TOTAL_WALLPAPERS = 20000;
+    const TOTAL_WALLPAPERS = 20200;
     const WP_DIR = "wallpapers";
     let pageSize = 60;
     let currentPage = 1;
