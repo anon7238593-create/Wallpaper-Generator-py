@@ -12,7 +12,7 @@ on:
       count:
         description: 'Number of wallpapers to generate'
         required: false
-        default: '10000'
+        default: '200'
 
 permissions:
   contents: write
