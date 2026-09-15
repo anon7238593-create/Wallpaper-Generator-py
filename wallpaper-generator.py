@@ -187,6 +187,7 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
 
     # 1. Manifest wallpapers.json
     now_iso = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    now_utc_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
     manifest = {
         "count": len(filenames),
         "updated_at": now_iso,
@@ -211,6 +212,9 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Wallpaper Generator (4K)</title>
   <link rel="icon" href="favicon.png" type="image/png">
   <style>
@@ -403,6 +407,8 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
   <div class="toolbar">
     <div class="toolbar-group">
       <span id="counter-text">Showing wallpapers</span>
+      <span style="opacity: 0.35; margin: 0 0.35rem;">|</span>
+      <span>Updated: {now_utc_str}</span>
     </div>
     <div class="toolbar-group">
       <span>Per page:</span>
@@ -574,6 +580,9 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Random Wallpaper</title>
   <link rel="icon" href="../favicon.png" type="image/png">
   <script>

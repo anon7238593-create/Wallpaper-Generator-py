@@ -1,4 +1,4 @@
-name: Generate Wallpapers
+name: Generate Wallpapers and Deploy Pages
 
 on:
   schedule:
@@ -16,10 +16,12 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
-  group: generate-wallpapers
-  cancel-in-progress: false
+  group: generate-and-deploy
+  cancel-in-progress: true
 
 jobs:
   generate:
@@ -63,3 +65,30 @@ jobs:
           COUNT="${INPUT_COUNT:-10000}"
           git commit -m "Generate $COUNT wallpapers [$(date -u +'%Y-%m-%d %H:%M:%S UTC')]"
           git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" artifacts
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: generate
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout artifacts branch
+        uses: actions/checkout@v4
+        with:
+          ref: artifacts
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
