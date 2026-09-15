@@ -47,7 +47,7 @@ python3 wallpaper-generator.py --count 1000 --output-dir dist/wallpapers --site-
 ## GitHub Actions Workflows
 
 1. **`Generate Wallpapers`** (`.github/workflows/generate-wallpapers.yml`):
-   - Triggered on schedule (`0 * * * *` - every hour) and manual `workflow_dispatch`.
+   - Triggered on every commit (`push`), on hourly schedule (`0 * * * *`), and on manual `workflow_dispatch`.
    - Generates 1,000 4K wallpapers and the minimal site.
    - Pushes the site snapshot cleanly to the `artifacts` branch.
 2. **`Deploy GitHub Pages`** (`.github/workflows/deploy-pages.yml`):

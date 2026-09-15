@@ -4,6 +4,9 @@ on:
   schedule:
     # Runs at minute 0 of every hour
     - cron: '0 * * * *'
+  push:
+    branches-ignore:
+      - artifacts
   workflow_dispatch:
     inputs:
       count:
