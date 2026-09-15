@@ -9,7 +9,7 @@ Algorithmic procedural 4K wallpaper generator in Python. Generates beautiful abs
 - **GitHub Pages Deployment**: Deploys a minimal, responsive website showcasing all 10,000 wallpapers with very little CSS and zero heavy frameworks.
 - **`/random` Endpoint**: 
   - `https://<user>.github.io/Wallpaper-Generator-py/random` instantly redirects to a random wallpaper image.
-  - `https://<user>.github.io/Wallpaper-Generator-py/random?view=1` opens an interactive viewer with a "🎲 Another Random" button.
+  - `https://<user>.github.io/Wallpaper-Generator-py/random?view=1` opens an interactive viewer with an "Another Random" button.
 - **Fast Multi-threading**: Parallel rendering with configurable worker threads.
 
 ## Installation

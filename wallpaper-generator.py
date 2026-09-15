@@ -391,12 +391,11 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
   <header>
     <div class="title-group">
       <h1>Wallpaper Generator</h1>
-      <p>{count:,} algorithmic 4K wallpapers (3840×2160) • Generated hourly via GitHub Actions</p>
     </div>
     <div class="actions">
-      <a href="random/" class="btn primary" title="Gives a direct random wallpaper">🎲 /random</a>
-      <a href="random/?view=1" class="btn" title="View random wallpaper interactively">🖼️ Random Viewer</a>
-      <a href="wallpapers.json" class="btn" target="_blank">📋 API JSON</a>
+      <a href="random/" class="btn primary" title="Gives a direct random wallpaper">/random</a>
+      <a href="random/?view=1" class="btn" title="View random wallpaper interactively">Random Viewer</a>
+      <a href="wallpapers.json" class="btn" target="_blank">API JSON</a>
       <input type="number" id="jump-input" class="search-box" min="1" max="{count}" placeholder="Go to # (1-{count})...">
     </div>
   </header>
@@ -417,9 +416,9 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
   <main class="grid" id="wallpaper-grid"></main>
 
   <nav class="pagination" id="pagination-controls">
-    <button class="btn" id="prev-btn">◀ Previous</button>
+    <button class="btn" id="prev-btn">Previous</button>
     <span class="page-info" id="page-indicator">Page 1</span>
-    <button class="btn" id="next-btn">Next ▶</button>
+    <button class="btn" id="next-btn">Next</button>
   </nav>
 
   <footer>
@@ -666,11 +665,11 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
 </head>
 <body>
   <header>
-    <a href="../" class="brand">← Back to Gallery</a>
+    <a href="../" class="brand">Back to Gallery</a>
     <div class="title" id="wp-title">Random Wallpaper</div>
     <div class="nav-btns">
-      <button class="btn" onclick="location.reload()">🎲 Another Random</button>
-      <a id="download-btn" class="btn primary" download>⬇ Download 4K</a>
+      <button class="btn" onclick="location.reload()">Another Random</button>
+      <a id="download-btn" class="btn primary" download>Download 4K</a>
     </div>
   </header>
   <main>
