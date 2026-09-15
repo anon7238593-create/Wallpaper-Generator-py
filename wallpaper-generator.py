@@ -345,16 +345,6 @@ def build_site(site_dir, wallpaper_dir=None, wallpaper_dir_rel="wallpapers", fil
     .btn.primary {{ background: var(--accent); border-color: var(--accent); color: #fff; }}
     .btn.primary:hover {{ background: var(--accent-hover); }}
     .btn:disabled {{ opacity: 0.4; cursor: not-allowed; }}
-    .search-box {{
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 0.45rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      width: 150px;
-    }}
-    .search-box:focus {{ outline: none; border-color: var(--accent); }}
     .toolbar {{
       max-width: 1440px;
       margin: 0 auto 1.25rem;
@@ -388,10 +378,6 @@ def build_site(site_dir, wallpaper_dir=None, wallpaper_dir_rel="wallpapers", fil
       transition: transform 0.15s, border-color 0.15s;
     }}
     .card:hover {{ transform: translateY(-2px); border-color: #434557; }}
-    .card.highlight {{
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px var(--accent);
-    }}
     .img-wrap {{
       position: relative;
       width: 100%;
@@ -464,22 +450,12 @@ def build_site(site_dir, wallpaper_dir=None, wallpaper_dir_rel="wallpapers", fil
       <a href="random/?view=1" class="btn" title="View random wallpaper interactively">Random Viewer</a>
       <a href="count" class="btn" target="_blank" title="API returning only number of wallpapers">Count API</a>
       <a href="wallpapers.json" class="btn" target="_blank">API JSON</a>
-      <input type="number" id="jump-input" class="search-box" min="1" max="{total_count}" placeholder="Go to # (1-{total_count})...">
     </div>
   </header>
 
   <div class="toolbar">
     <div class="toolbar-group">
-      <span id="counter-text">Showing wallpapers</span>
-      <span style="opacity: 0.35; margin: 0 0.35rem;">|</span>
       <span>Updated: {now_utc_str}</span>
-    </div>
-    <div class="toolbar-group">
-      <span>Per page:</span>
-      <button class="btn per-page-btn" data-size="60">60</button>
-      <button class="btn per-page-btn" data-size="120">120</button>
-      <button class="btn per-page-btn" data-size="240">240</button>
-      <button class="btn per-page-btn" data-size="all">All ({total_count:,})</button>
     </div>
   </div>
 
@@ -499,28 +475,23 @@ def build_site(site_dir, wallpaper_dir=None, wallpaper_dir_rel="wallpapers", fil
   <script>
     const TOTAL_WALLPAPERS = {total_count};
     const WP_DIR = "{wallpaper_dir_rel}";
-    let pageSize = 60;
+    const pageSize = 60;
     let currentPage = 1;
-    let showAll = false;
 
     const grid = document.getElementById('wallpaper-grid');
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const pageIndicator = document.getElementById('page-indicator');
-    const counterText = document.getElementById('counter-text');
-    const jumpInput = document.getElementById('jump-input');
     const paginationControls = document.getElementById('pagination-controls');
 
     function totalPages() {{
-      return showAll ? 1 : Math.ceil(TOTAL_WALLPAPERS / pageSize);
+      return Math.ceil(TOTAL_WALLPAPERS / pageSize);
     }}
 
     function renderWallpapers() {{
       grid.innerHTML = '';
-      const startIdx = showAll ? 1 : ((currentPage - 1) * pageSize) + 1;
-      const endIdx = showAll ? TOTAL_WALLPAPERS : Math.min(currentPage * pageSize, TOTAL_WALLPAPERS);
-
-      counterText.textContent = `Showing #${{startIdx}} - #${{endIdx}} of ${{TOTAL_WALLPAPERS.toLocaleString()}}`;
+      const startIdx = ((currentPage - 1) * pageSize) + 1;
+      const endIdx = Math.min(currentPage * pageSize, TOTAL_WALLPAPERS);
 
       const fragment = document.createDocumentFragment();
       for (let i = startIdx; i <= endIdx; i++) {{
@@ -549,15 +520,11 @@ def build_site(site_dir, wallpaper_dir=None, wallpaper_dir_rel="wallpapers", fil
       }}
       grid.appendChild(fragment);
 
-      if (showAll) {{
-        paginationControls.style.display = 'none';
-      }} else {{
-        paginationControls.style.display = 'flex';
-        const pages = totalPages();
-        pageIndicator.textContent = `Page ${{currentPage}} of ${{pages}}`;
-        prevBtn.disabled = currentPage <= 1;
-        nextBtn.disabled = currentPage >= pages;
-      }}
+      paginationControls.style.display = 'flex';
+      const pages = totalPages();
+      pageIndicator.textContent = `Page ${{currentPage}} of ${{pages}}`;
+      prevBtn.disabled = currentPage <= 1;
+      nextBtn.disabled = currentPage >= pages;
     }}
 
     prevBtn.addEventListener('click', () => {{
@@ -573,47 +540,6 @@ def build_site(site_dir, wallpaper_dir=None, wallpaper_dir_rel="wallpapers", fil
         currentPage++;
         renderWallpapers();
         window.scrollTo({{ top: 0, behavior: 'smooth' }});
-      }}
-    }});
-
-    document.querySelectorAll('.per-page-btn').forEach(btn => {{
-      btn.addEventListener('click', () => {{
-        const size = btn.getAttribute('data-size');
-        if (size === 'all') {{
-          showAll = true;
-        }} else {{
-          showAll = false;
-          pageSize = parseInt(size, 10);
-          currentPage = 1;
-        }}
-        renderWallpapers();
-      }});
-    }});
-
-    jumpInput.addEventListener('keydown', (e) => {{
-      if (e.key === 'Enter') {{
-        const num = parseInt(jumpInput.value, 10);
-        if (num >= 1 && num <= TOTAL_WALLPAPERS) {{
-          if (showAll) {{
-            const el = document.getElementById(`wp-${{num}}`);
-            if (el) {{
-              el.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-              el.classList.add('highlight');
-              setTimeout(() => el.classList.remove('highlight'), 2000);
-            }}
-          }} else {{
-            currentPage = Math.ceil(num / pageSize);
-            renderWallpapers();
-            setTimeout(() => {{
-              const el = document.getElementById(`wp-${{num}}`);
-              if (el) {{
-                el.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-                el.classList.add('highlight');
-                setTimeout(() => el.classList.remove('highlight'), 2000);
-              }}
-            }}, 50);
-          }}
-        }}
       }}
     }});
 
