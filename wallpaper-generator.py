@@ -127,69 +127,125 @@ def draw():
     print(f"Saved: {next_filename}")
     return next_filename
 
-def _save_one(index, out_dir, width, height, compress_level, prefix, pad_len):
-    filename = f"{prefix}{index:0{pad_len}d}.png"
+def get_highest_wallpaper_index(directory, prefix="wallpaper-"):
+    """
+    Scans directory for existing wallpaper files and returns the highest integer index found.
+    Handles both non-padded (wallpaper-123.png) and padded (wallpaper-00123.png).
+    """
+    if not os.path.isdir(directory):
+        return 0
+    highest = 0
+    for fname in os.listdir(directory):
+        if fname.startswith(prefix) and fname.endswith('.png'):
+            num_part = fname[len(prefix):-4]
+            try:
+                num = int(num_part)
+                if num > highest:
+                    highest = num
+            except ValueError:
+                pass
+    return highest
+
+def get_all_wallpapers(directory, prefix="wallpaper-"):
+    """Returns sorted list of all wallpaper filenames by integer suffix."""
+    if not os.path.isdir(directory):
+        return []
+    items = []
+    for fname in os.listdir(directory):
+        if fname.startswith(prefix) and fname.endswith('.png'):
+            num_part = fname[len(prefix):-4]
+            try:
+                num = int(num_part)
+                items.append((num, fname))
+            except ValueError:
+                pass
+    items.sort(key=lambda x: x[0])
+    return [fname for _, fname in items]
+
+def _save_one(index, out_dir, width, height, compress_level, prefix):
+    # No leading zeros in filename: wallpaper-1.png, wallpaper-2.png, ...
+    filename = f"{prefix}{index}.png"
     filepath = os.path.join(out_dir, filename)
     img = render_wallpaper(width, height)
     img.save(filepath, 'PNG', optimize=False, compress_level=compress_level)
     return filename
 
 def generate_batch(count=10000, output_dir="./generated-wallpapers", width=3840, height=2160,
-                   compress_level=6, max_workers=None, prefix="wallpaper-"):
-    """Generates count wallpapers in parallel using ThreadPoolExecutor."""
+                   compress_level=6, max_workers=None, prefix="wallpaper-", start_index=None):
+    """
+    Generates count wallpapers in parallel without removing existing ones.
+    Starts from existing highest index + 1 by default.
+    """
     os.makedirs(output_dir, exist_ok=True)
     if max_workers is None:
         cpu_count = os.cpu_count() or 4
         max_workers = min(32, max(4, cpu_count * 2))
 
-    pad_len = max(4, len(str(count)))
-    print(f"Generating {count:,} wallpapers ({width}x{height}) in '{output_dir}' with {max_workers} worker threads...")
+    if start_index is None:
+        start_index = get_highest_wallpaper_index(output_dir, prefix) + 1
+
+    end_index = start_index + count - 1
+    print(f"Generating {count:,} wallpapers (index {start_index} to {end_index}) in '{output_dir}' with {max_workers} worker threads...")
     start_time = time.time()
     
-    filenames = []
+    new_filenames = []
     step = max(50, count // 20)  # log progress approximately every 5%
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
-            executor.submit(_save_one, i, output_dir, width, height, compress_level, prefix, pad_len)
-            for i in range(1, count + 1)
+            executor.submit(_save_one, i, output_dir, width, height, compress_level, prefix)
+            for i in range(start_index, end_index + 1)
         ]
         completed = 0
         for f in futures:
             fname = f.result()
-            filenames.append(fname)
+            new_filenames.append(fname)
             completed += 1
             if completed % step == 0 or completed == count:
                 elapsed = time.time() - start_time
                 rate = completed / elapsed if elapsed > 0 else 0
                 print(f"  Progress: {completed:,}/{count:,} ({completed/count*100:.1f}%) in {elapsed:.1f}s ({rate:.1f} img/s)")
 
-    filenames.sort()
     total_time = time.time() - start_time
-    print(f"Successfully generated {count:,} wallpapers in {total_time:.2f}s.")
-    return filenames
+    print(f"Successfully generated {count:,} new wallpapers in {total_time:.2f}s.")
+    return new_filenames
 
-def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
+def build_site(site_dir, wallpaper_dir=None, wallpaper_dir_rel="wallpapers", filenames=None):
     """
     Builds minimal static website with:
-    - index.html: Minimal gallery showing all wallpapers
+    - index.html: Minimal gallery showing all wallpapers (no emojis, no leading zeros)
     - random/index.html: /random endpoint giving a random wallpaper
-    - wallpapers.json: Manifest of all wallpapers
+    - count APIs:
+      - /count (plain text file returning only total wallpaper count)
+      - /count.txt (plain text)
+      - /count.json ({"count": total_count})
+      - /api/count (plain text)
+      - /api/count.json ({"count": total_count})
+      - /count/index.html (plain text count)
+    - wallpapers.json: Full manifest of all wallpapers
     - .nojekyll: Prevent GitHub Pages from ignoring special files
     - favicon.png: Copied if available in workspace
     """
     os.makedirs(site_dir, exist_ok=True)
     os.makedirs(os.path.join(site_dir, "random"), exist_ok=True)
+    os.makedirs(os.path.join(site_dir, "count"), exist_ok=True)
+    os.makedirs(os.path.join(site_dir, "api"), exist_ok=True)
 
-    pad_len = max(4, len(str(count)))
-    first_wp_filename = f"wallpaper-{'0' * (pad_len - 1)}1.png"
+    if wallpaper_dir is None:
+        wallpaper_dir = os.path.join(site_dir, wallpaper_dir_rel)
+
     if filenames is None:
-        filenames = [f"wallpaper-{i:0{pad_len}d}.png" for i in range(1, count + 1)]
+        filenames = get_all_wallpapers(wallpaper_dir)
+        if not filenames:
+            # Default fallback if empty
+            filenames = [f"wallpaper-{i}.png" for i in range(1, 10001)]
+
+    total_count = len(filenames)
 
     # 1. Manifest wallpapers.json
     now_iso = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     now_utc_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
     manifest = {
-        "count": len(filenames),
+        "count": total_count,
         "updated_at": now_iso,
         "resolution": "3840x2160",
         "wallpapers": [f"{wallpaper_dir_rel}/{fn}" for fn in filenames]
@@ -197,16 +253,28 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
     with open(os.path.join(site_dir, "wallpapers.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
-    # 2. .nojekyll
+    # 2. Count APIs (returns only the number of wallpapers present)
+    with open(os.path.join(site_dir, "count", "index.html"), "w", encoding="utf-8") as f:
+        f.write(f"{total_count}\n")
+    with open(os.path.join(site_dir, "count.txt"), "w", encoding="utf-8") as f:
+        f.write(f"{total_count}\n")
+    with open(os.path.join(site_dir, "count.json"), "w", encoding="utf-8") as f:
+        json.dump({"count": total_count}, f, indent=2)
+    with open(os.path.join(site_dir, "api", "count"), "w", encoding="utf-8") as f:
+        f.write(f"{total_count}\n")
+    with open(os.path.join(site_dir, "api", "count.json"), "w", encoding="utf-8") as f:
+        json.dump({"count": total_count}, f, indent=2)
+
+    # 3. .nojekyll
     with open(os.path.join(site_dir, ".nojekyll"), "w", encoding="utf-8") as f:
         f.write("")
 
-    # 3. Copy favicon if exists
+    # 4. Copy favicon if exists
     favicon_src = "favicon.png"
     if os.path.isfile(favicon_src):
         shutil.copy2(favicon_src, os.path.join(site_dir, "favicon.png"))
 
-    # 4. Minimal index.html
+    # 5. Minimal index.html
     index_html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -251,11 +319,6 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
       font-size: 1.6rem;
       font-weight: 700;
       letter-spacing: -0.02em;
-    }}
-    .title-group p {{
-      color: var(--text-muted);
-      font-size: 0.88rem;
-      margin-top: 0.25rem;
     }}
     .actions {{
       display: flex;
@@ -399,8 +462,9 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
     <div class="actions">
       <a href="random/" class="btn primary" title="Gives a direct random wallpaper">/random</a>
       <a href="random/?view=1" class="btn" title="View random wallpaper interactively">Random Viewer</a>
+      <a href="count" class="btn" target="_blank" title="API returning only number of wallpapers">Count API</a>
       <a href="wallpapers.json" class="btn" target="_blank">API JSON</a>
-      <input type="number" id="jump-input" class="search-box" min="1" max="{count}" placeholder="Go to # (1-{count})...">
+      <input type="number" id="jump-input" class="search-box" min="1" max="{total_count}" placeholder="Go to # (1-{total_count})...">
     </div>
   </header>
 
@@ -415,7 +479,7 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
       <button class="btn per-page-btn" data-size="60">60</button>
       <button class="btn per-page-btn" data-size="120">120</button>
       <button class="btn per-page-btn" data-size="240">240</button>
-      <button class="btn per-page-btn" data-size="all">All ({count:,})</button>
+      <button class="btn per-page-btn" data-size="all">All ({total_count:,})</button>
     </div>
   </div>
 
@@ -433,8 +497,7 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
   </footer>
 
   <script>
-    const TOTAL_WALLPAPERS = {count};
-    const PAD_LEN = {pad_len};
+    const TOTAL_WALLPAPERS = {total_count};
     const WP_DIR = "{wallpaper_dir_rel}";
     let pageSize = 60;
     let currentPage = 1;
@@ -461,8 +524,7 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
 
       const fragment = document.createDocumentFragment();
       for (let i = startIdx; i <= endIdx; i++) {{
-        const pad = String(i).padStart(PAD_LEN, '0');
-        const filename = `wallpaper-${{pad}}.png`;
+        const filename = `wallpaper-${{i}}.png`;
         const path = `${{WP_DIR}}/${{filename}}`;
 
         const card = document.createElement('div');
@@ -472,11 +534,11 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
         card.innerHTML = `
           <div class="img-wrap">
             <a href="${{path}}" target="_blank" rel="noopener">
-              <img src="${{path}}" alt="Wallpaper #${{pad}}" loading="lazy" width="3840" height="2160">
+              <img src="${{path}}" alt="Wallpaper #${{i}}" loading="lazy" width="3840" height="2160">
             </a>
           </div>
           <div class="card-footer">
-            <span class="card-id">#${{pad}}</span>
+            <span class="card-id">#${{i}}</span>
             <div class="card-links">
               <a href="${{path}}" target="_blank" rel="noopener">View 4K</a>
               <a href="${{path}}" download="${{filename}}">Download</a>
@@ -562,8 +624,9 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
       <p>JavaScript is disabled. Explore wallpapers directly:</p>
       <ul style="margin:1rem 0 0 1.5rem;">
         <li><a href="random/" style="color:#6366f1;">Get a Random Wallpaper (/random)</a></li>
+        <li><a href="count" style="color:#6366f1;">View Wallpaper Count API (/count)</a></li>
         <li><a href="wallpapers.json" style="color:#6366f1;">View wallpapers.json manifest</a></li>
-        <li><a href="{wallpaper_dir_rel}/{first_wp_filename}" style="color:#6366f1;">View Wallpaper #{'0' * (pad_len - 1)}1</a></li>
+        <li><a href="{wallpaper_dir_rel}/wallpaper-1.png" style="color:#6366f1;">View Wallpaper #1</a></li>
       </ul>
     </div>
   </noscript>
@@ -574,7 +637,7 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
     with open(os.path.join(site_dir, "index.html"), "w", encoding="utf-8") as f:
         f.write(index_html.strip() + "\n")
 
-    # 5. Minimal /random endpoint (random/index.html)
+    # 6. Minimal /random endpoint (random/index.html)
     random_html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -587,13 +650,11 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
   <link rel="icon" href="../favicon.png" type="image/png">
   <script>
     (function() {{
-      const TOTAL_WALLPAPERS = {count};
-      const PAD_LEN = {pad_len};
+      const TOTAL_WALLPAPERS = {total_count};
       const params = new URLSearchParams(window.location.search);
       const isViewMode = params.has('view');
       const idx = Math.floor(Math.random() * TOTAL_WALLPAPERS) + 1;
-      const pad = String(idx).padStart(PAD_LEN, '0');
-      const filename = `wallpaper-${{pad}}.png`;
+      const filename = `wallpaper-${{idx}}.png`;
       const url = `../{wallpaper_dir_rel}/${{filename}}`;
 
       if (!isViewMode) {{
@@ -601,12 +662,12 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
         window.location.replace(url);
       }} else {{
         // Save details for viewer mode
-        window.__randomWallpaper = {{ idx, pad, filename, url }};
+        window.__randomWallpaper = {{ idx, filename, url }};
       }}
     }})();
   </script>
   <noscript>
-    <meta http-equiv="refresh" content="0; url=../{wallpaper_dir_rel}/{first_wp_filename}">
+    <meta http-equiv="refresh" content="0; url=../{wallpaper_dir_rel}/wallpaper-1.png">
   </noscript>
   <style>
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
@@ -686,10 +747,10 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
   </main>
   <script>
     if (window.__randomWallpaper) {{
-      const {{ idx, pad, filename, url }} = window.__randomWallpaper;
+      const {{ idx, filename, url }} = window.__randomWallpaper;
       document.getElementById('wallpaper-img').src = url;
       document.getElementById('wallpaper-img').alt = filename;
-      document.getElementById('wp-title').textContent = `Wallpaper #${{pad}}`;
+      document.getElementById('wp-title').textContent = `Wallpaper #${{idx}}`;
       const dl = document.getElementById('download-btn');
       dl.href = url;
       dl.setAttribute('download', filename);
@@ -702,14 +763,15 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
     with open(os.path.join(site_dir, "random", "index.html"), "w", encoding="utf-8") as f:
         f.write(random_html.strip() + "\n")
 
-    print(f"Site built successfully in '{site_dir}' (index.html, random/index.html, wallpapers.json).")
+    print(f"Site built successfully in '{site_dir}' (total: {total_count} wallpapers).")
 
 def main():
     parser = argparse.ArgumentParser(description="Procedural 4K Wallpaper Generator")
-    parser.add_argument("--count", "-n", type=int, default=1, help="Number of wallpapers to generate (default: 1)")
+    parser.add_argument("--count", "-n", type=int, default=1, help="Number of new wallpapers to generate (default: 1)")
+    parser.add_argument("--start-index", type=int, default=None, help="Starting index for wallpapers (default: auto-detect highest + 1)")
     parser.add_argument("--output-dir", "-o", type=str, default="./generated-wallpapers", help="Output directory for wallpaper PNGs")
     parser.add_argument("--site-dir", type=str, default=None, help="Output directory for site files (default: output-dir or ./dist)")
-    parser.add_argument("--build-site", action="store_true", help="Generate website (index.html, random/index.html, manifest)")
+    parser.add_argument("--build-site", action="store_true", help="Generate website (index.html, random/index.html, count API, manifest)")
     parser.add_argument("--width", type=int, default=3840, help="Image width (default: 3840)")
     parser.add_argument("--height", type=int, default=2160, help="Image height (default: 2160)")
     parser.add_argument("--threads", "-j", type=int, default=None, help="Worker threads for parallel generation")
@@ -737,21 +799,21 @@ def main():
                 pass
         return
 
-    # Batch generation
-    filenames = generate_batch(
+    # Incremental batch generation: preserves existing wallpapers
+    generate_batch(
         count=args.count,
         output_dir=args.output_dir,
         width=args.width,
         height=args.height,
         compress_level=args.compress,
         max_workers=args.threads,
-        prefix=args.prefix
+        prefix=args.prefix,
+        start_index=args.start_index
     )
 
     if args.build_site:
-        # Calculate relative path from site_dir to output_dir
         rel_wp_dir = os.path.relpath(args.output_dir, site_dir)
-        build_site(site_dir, args.count, wallpaper_dir_rel=rel_wp_dir, filenames=filenames)
+        build_site(site_dir, wallpaper_dir=args.output_dir, wallpaper_dir_rel=rel_wp_dir)
 
 if __name__ == "__main__":
     main()

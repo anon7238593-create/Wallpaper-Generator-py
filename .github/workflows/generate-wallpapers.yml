@@ -32,6 +32,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Checkout artifacts branch (preserve existing wallpapers)
+        uses: actions/checkout@v4
+        with:
+          ref: artifacts
+          path: dist
+        continue-on-error: true
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -48,7 +55,7 @@ jobs:
           INPUT_COUNT: ${{ inputs.count }}
         run: |
           COUNT="${INPUT_COUNT:-10000}"
-          echo "Starting generation of $COUNT wallpapers..."
+          echo "Generating $COUNT new wallpapers (preserving existing wallpapers)..."
           python3 wallpaper-generator.py --count "$COUNT" --output-dir dist/wallpapers --site-dir dist --build-site
 
       - name: Push to artifacts branch
@@ -56,15 +63,19 @@ jobs:
           INPUT_COUNT: ${{ inputs.count }}
         run: |
           cd dist
-          git init
+          # If not a git repo yet (e.g. fresh repository initialization)
+          if [ ! -d .git ]; then
+            git init
+            git checkout -b artifacts
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config http.postBuffer 1048576000
-          git checkout -b artifacts
           git add -A
           COUNT="${INPUT_COUNT:-10000}"
-          git commit -m "Generate $COUNT wallpapers [$(date -u +'%Y-%m-%d %H:%M:%S UTC')]"
-          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" artifacts
+          TOTAL="$(cat count.txt 2>/dev/null || cat count 2>/dev/null || echo "$COUNT")"
+          git commit -m "Add $COUNT wallpapers [total: $TOTAL] [$(date -u +'%Y-%m-%d %H:%M:%S UTC')]" || echo "No new changes to commit"
+          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" artifacts
 
   deploy:
     name: Deploy to GitHub Pages

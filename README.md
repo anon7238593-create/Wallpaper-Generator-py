@@ -4,13 +4,33 @@ Algorithmic procedural 4K wallpaper generator in Python. Generates beautiful abs
 
 ## Features
 
-- **Hourly GitHub Action**: Generates 10,000 new 4K wallpapers automatically every hour.
-- **`artifacts` Branch**: All 10,000 wallpapers, manifest, and website are saved and tracked in the `artifacts` branch.
-- **GitHub Pages Deployment**: Deploys a minimal, responsive website showcasing all 10,000 wallpapers with very little CSS and zero heavy frameworks.
+- **Incremental Wallpaper Persistence**: Does not remove old wallpapers. Each run generates new wallpapers and appends them sequentially (`wallpaper-1.png`, `wallpaper-2.png`, etc.).
+- **Unpadded File Names**: File names have no leading zeros, making them easy to download in simple loop scripts.
+- **Count API**:
+  - `https://<user>.github.io/Wallpaper-Generator-py/count/` returns only the number of wallpapers present (plain text).
+  - `https://<user>.github.io/Wallpaper-Generator-py/count.txt` (plain text).
+  - `https://<user>.github.io/Wallpaper-Generator-py/count.json` returns `{"count": 10000}`.
+  - `https://<user>.github.io/Wallpaper-Generator-py/api/count` (plain text).
+  - `https://<user>.github.io/Wallpaper-Generator-py/api/count.json` (JSON).
 - **`/random` Endpoint**: 
   - `https://<user>.github.io/Wallpaper-Generator-py/random` instantly redirects to a random wallpaper image.
   - `https://<user>.github.io/Wallpaper-Generator-py/random?view=1` opens an interactive viewer with an "Another Random" button.
-- **Fast Multi-threading**: Parallel rendering with configurable worker threads.
+- **Automated Workflows**: Runs on every commit and hourly via GitHub Actions, automatically deploying the updated site to GitHub Pages.
+
+## Downloading Wallpapers via Script
+
+Because filenames have no leading zeros, you can download all available wallpapers with a simple bash script:
+
+```bash
+BASE_URL="https://anon7238593-create.github.io/Wallpaper-Generator-py"
+COUNT=$(curl -s "${BASE_URL}/count/")
+
+echo "Downloading $COUNT wallpapers..."
+mkdir -p wallpapers
+for i in $(seq 1 $COUNT); do
+  curl -s -O "${BASE_URL}/wallpapers/wallpaper-${i}.png"
+done
+```
 
 ## Installation
 
@@ -25,7 +45,7 @@ pip install -r requirements.txt
 python3 wallpaper-generator.py
 ```
 
-### Generate 10,000 Wallpapers and Build Site
+### Generate Wallpapers and Build Site
 ```bash
 python3 wallpaper-generator.py --count 10000 --output-dir dist/wallpapers --site-dir dist --build-site
 ```
@@ -34,10 +54,11 @@ python3 wallpaper-generator.py --count 10000 --output-dir dist/wallpapers --site
 
 | Argument | Description | Default |
 | --- | --- | --- |
-| `--count`, `-n` | Number of wallpapers to generate | `1` |
+| `--count`, `-n` | Number of new wallpapers to generate | `1` |
+| `--start-index` | Starting index (auto-detects highest + 1) | Auto |
 | `--output-dir`, `-o` | Output directory for PNGs | `./generated-wallpapers` |
 | `--site-dir` | Directory for generated website | `./dist` |
-| `--build-site` | Build minimal site (`index.html`, `/random`, `wallpapers.json`) | `False` |
+| `--build-site` | Build minimal site (`index.html`, `/random`, count APIs) | `False` |
 | `--width` | Image width in pixels | `3840` |
 | `--height` | Image height in pixels | `2160` |
 | `--threads`, `-j` | Worker threads for parallel generation | Auto |
@@ -46,19 +67,10 @@ python3 wallpaper-generator.py --count 10000 --output-dir dist/wallpapers --site
 
 ## GitHub Actions Workflows
 
-1. **`Generate Wallpapers`** (`.github/workflows/generate-wallpapers.yml`):
-   - Triggered on every commit (`push`), on hourly schedule (`0 * * * *`), and on manual `workflow_dispatch`.
-   - Generates 10,000 4K wallpapers and the minimal site.
-   - Pushes the site snapshot cleanly to the `artifacts` branch.
-2. **`Deploy GitHub Pages`** (`.github/workflows/deploy-pages.yml`):
-   - Automatically triggered upon completion of `Generate Wallpapers` or on manual `workflow_dispatch`.
-   - Deploys the static site from the `artifacts` branch to GitHub Pages.
-
-## Setting up GitHub Pages
-
-In the GitHub repository:
-1. Go to **Settings** > **Pages**.
-2. Under **Build and deployment** > **Source**, choose **GitHub Actions** (or select branch **artifacts** with folder `/ (root)`).
+- **`Generate Wallpapers and Deploy Pages`** (`.github/workflows/generate-wallpapers.yml`):
+  - Triggered on every commit (`push`), on hourly schedule (`0 * * * *`), and on manual `workflow_dispatch`.
+  - Checks out existing wallpapers from the `artifacts` branch, generates the new batch, updates count APIs and site files, and pushes incrementally.
+  - Automatically deploys to GitHub Pages in the same workflow run.
 
 ## Original Code & Credits
 
