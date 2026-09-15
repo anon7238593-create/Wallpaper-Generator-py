@@ -127,14 +127,14 @@ def draw():
     print(f"Saved: {next_filename}")
     return next_filename
 
-def _save_one(index, out_dir, width, height, compress_level, prefix):
-    filename = f"{prefix}{index:04d}.png"
+def _save_one(index, out_dir, width, height, compress_level, prefix, pad_len):
+    filename = f"{prefix}{index:0{pad_len}d}.png"
     filepath = os.path.join(out_dir, filename)
     img = render_wallpaper(width, height)
     img.save(filepath, 'PNG', optimize=False, compress_level=compress_level)
     return filename
 
-def generate_batch(count=1000, output_dir="./generated-wallpapers", width=3840, height=2160,
+def generate_batch(count=10000, output_dir="./generated-wallpapers", width=3840, height=2160,
                    compress_level=6, max_workers=None, prefix="wallpaper-"):
     """Generates count wallpapers in parallel using ThreadPoolExecutor."""
     os.makedirs(output_dir, exist_ok=True)
@@ -142,13 +142,15 @@ def generate_batch(count=1000, output_dir="./generated-wallpapers", width=3840, 
         cpu_count = os.cpu_count() or 4
         max_workers = min(32, max(4, cpu_count * 2))
 
-    print(f"Generating {count} wallpapers ({width}x{height}) in '{output_dir}' with {max_workers} worker threads...")
+    pad_len = max(4, len(str(count)))
+    print(f"Generating {count:,} wallpapers ({width}x{height}) in '{output_dir}' with {max_workers} worker threads...")
     start_time = time.time()
     
     filenames = []
+    step = max(50, count // 20)  # log progress approximately every 5%
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
-            executor.submit(_save_one, i, output_dir, width, height, compress_level, prefix)
+            executor.submit(_save_one, i, output_dir, width, height, compress_level, prefix, pad_len)
             for i in range(1, count + 1)
         ]
         completed = 0
@@ -156,14 +158,14 @@ def generate_batch(count=1000, output_dir="./generated-wallpapers", width=3840, 
             fname = f.result()
             filenames.append(fname)
             completed += 1
-            if completed % 100 == 0 or completed == count:
+            if completed % step == 0 or completed == count:
                 elapsed = time.time() - start_time
                 rate = completed / elapsed if elapsed > 0 else 0
-                print(f"  Progress: {completed}/{count} ({completed/count*100:.1f}%) in {elapsed:.1f}s ({rate:.1f} img/s)")
+                print(f"  Progress: {completed:,}/{count:,} ({completed/count*100:.1f}%) in {elapsed:.1f}s ({rate:.1f} img/s)")
 
     filenames.sort()
     total_time = time.time() - start_time
-    print(f"Successfully generated {count} wallpapers in {total_time:.2f}s.")
+    print(f"Successfully generated {count:,} wallpapers in {total_time:.2f}s.")
     return filenames
 
 def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
@@ -178,8 +180,10 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
     os.makedirs(site_dir, exist_ok=True)
     os.makedirs(os.path.join(site_dir, "random"), exist_ok=True)
 
+    pad_len = max(4, len(str(count)))
+    first_wp_filename = f"wallpaper-{'0' * (pad_len - 1)}1.png"
     if filenames is None:
-        filenames = [f"wallpaper-{i:04d}.png" for i in range(1, count + 1)]
+        filenames = [f"wallpaper-{i:0{pad_len}d}.png" for i in range(1, count + 1)]
 
     # 1. Manifest wallpapers.json
     now_iso = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -405,6 +409,7 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
       <span>Per page:</span>
       <button class="btn per-page-btn" data-size="60">60</button>
       <button class="btn per-page-btn" data-size="120">120</button>
+      <button class="btn per-page-btn" data-size="240">240</button>
       <button class="btn per-page-btn" data-size="all">All ({count:,})</button>
     </div>
   </div>
@@ -424,6 +429,7 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
 
   <script>
     const TOTAL_WALLPAPERS = {count};
+    const PAD_LEN = {pad_len};
     const WP_DIR = "{wallpaper_dir_rel}";
     let pageSize = 60;
     let currentPage = 1;
@@ -450,7 +456,7 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
 
       const fragment = document.createDocumentFragment();
       for (let i = startIdx; i <= endIdx; i++) {{
-        const pad = String(i).padStart(4, '0');
+        const pad = String(i).padStart(PAD_LEN, '0');
         const filename = `wallpaper-${{pad}}.png`;
         const path = `${{WP_DIR}}/${{filename}}`;
 
@@ -552,7 +558,7 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
       <ul style="margin:1rem 0 0 1.5rem;">
         <li><a href="random/" style="color:#6366f1;">Get a Random Wallpaper (/random)</a></li>
         <li><a href="wallpapers.json" style="color:#6366f1;">View wallpapers.json manifest</a></li>
-        <li><a href="wallpapers/wallpaper-0001.png" style="color:#6366f1;">View Wallpaper #0001</a></li>
+        <li><a href="{wallpaper_dir_rel}/{first_wp_filename}" style="color:#6366f1;">View Wallpaper #{'0' * (pad_len - 1)}1</a></li>
       </ul>
     </div>
   </noscript>
@@ -574,10 +580,11 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
   <script>
     (function() {{
       const TOTAL_WALLPAPERS = {count};
+      const PAD_LEN = {pad_len};
       const params = new URLSearchParams(window.location.search);
       const isViewMode = params.has('view');
       const idx = Math.floor(Math.random() * TOTAL_WALLPAPERS) + 1;
-      const pad = String(idx).padStart(4, '0');
+      const pad = String(idx).padStart(PAD_LEN, '0');
       const filename = `wallpaper-${{pad}}.png`;
       const url = `../{wallpaper_dir_rel}/${{filename}}`;
 
@@ -591,7 +598,7 @@ def build_site(site_dir, count, wallpaper_dir_rel="wallpapers", filenames=None):
     }})();
   </script>
   <noscript>
-    <meta http-equiv="refresh" content="0; url=../{wallpaper_dir_rel}/wallpaper-0001.png">
+    <meta http-equiv="refresh" content="0; url=../{wallpaper_dir_rel}/{first_wp_filename}">
   </noscript>
   <style>
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}

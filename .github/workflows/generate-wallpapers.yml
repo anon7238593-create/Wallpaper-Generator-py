@@ -12,7 +12,7 @@ on:
       count:
         description: 'Number of wallpapers to generate'
         required: false
-        default: '1000'
+        default: '10000'
 
 permissions:
   contents: write
@@ -25,6 +25,7 @@ jobs:
   generate:
     name: Generate Wallpapers
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,7 +45,7 @@ jobs:
         env:
           INPUT_COUNT: ${{ inputs.count }}
         run: |
-          COUNT="${INPUT_COUNT:-1000}"
+          COUNT="${INPUT_COUNT:-10000}"
           echo "Starting generation of $COUNT wallpapers..."
           python3 wallpaper-generator.py --count "$COUNT" --output-dir dist/wallpapers --site-dir dist --build-site
 
@@ -56,8 +57,9 @@ jobs:
           git init
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config http.postBuffer 1048576000
           git checkout -b artifacts
           git add -A
-          COUNT="${INPUT_COUNT:-1000}"
+          COUNT="${INPUT_COUNT:-10000}"
           git commit -m "Generate $COUNT wallpapers [$(date -u +'%Y-%m-%d %H:%M:%S UTC')]"
           git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" artifacts

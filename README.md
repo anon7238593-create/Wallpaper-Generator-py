@@ -4,18 +4,18 @@ Algorithmic procedural 4K wallpaper generator in Python. Generates beautiful abs
 
 ## Features
 
-- **Hourly GitHub Action**: Generates 1,000 new 4K wallpapers automatically every hour.
-- **`artifacts` Branch**: All 1,000 wallpapers, manifest, and website are saved and tracked in the `artifacts` branch.
-- **GitHub Pages Deployment**: Deploys a minimal, responsive website showcasing all 1,000 wallpapers with very little CSS and zero heavy frameworks.
+- **Hourly GitHub Action**: Generates 10,000 new 4K wallpapers automatically every hour.
+- **`artifacts` Branch**: All 10,000 wallpapers, manifest, and website are saved and tracked in the `artifacts` branch.
+- **GitHub Pages Deployment**: Deploys a minimal, responsive website showcasing all 10,000 wallpapers with very little CSS and zero heavy frameworks.
 - **`/random` Endpoint**: 
   - `https://<user>.github.io/Wallpaper-Generator-py/random` instantly redirects to a random wallpaper image.
   - `https://<user>.github.io/Wallpaper-Generator-py/random?view=1` opens an interactive viewer with a "🎲 Another Random" button.
-- **Fast Multi-threading**: Parallel rendering generates 1,000 4K wallpapers in ~2–3 minutes.
+- **Fast Multi-threading**: Parallel rendering with configurable worker threads.
 
 ## Installation
 
 ```bash
-pip install Pillow
+pip install -r requirements.txt
 ```
 
 ## Usage
@@ -25,9 +25,9 @@ pip install Pillow
 python3 wallpaper-generator.py
 ```
 
-### Generate 1,000 Wallpapers and Build Site
+### Generate 10,000 Wallpapers and Build Site
 ```bash
-python3 wallpaper-generator.py --count 1000 --output-dir dist/wallpapers --site-dir dist --build-site
+python3 wallpaper-generator.py --count 10000 --output-dir dist/wallpapers --site-dir dist --build-site
 ```
 
 ### CLI Options
@@ -48,7 +48,7 @@ python3 wallpaper-generator.py --count 1000 --output-dir dist/wallpapers --site-
 
 1. **`Generate Wallpapers`** (`.github/workflows/generate-wallpapers.yml`):
    - Triggered on every commit (`push`), on hourly schedule (`0 * * * *`), and on manual `workflow_dispatch`.
-   - Generates 1,000 4K wallpapers and the minimal site.
+   - Generates 10,000 4K wallpapers and the minimal site.
    - Pushes the site snapshot cleanly to the `artifacts` branch.
 2. **`Deploy GitHub Pages`** (`.github/workflows/deploy-pages.yml`):
    - Automatically triggered upon completion of `Generate Wallpapers` or on manual `workflow_dispatch`.
