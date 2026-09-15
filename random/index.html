@@ -11,12 +11,10 @@
   <script>
     (function() {
       const TOTAL_WALLPAPERS = 10000;
-      const PAD_LEN = 5;
       const params = new URLSearchParams(window.location.search);
       const isViewMode = params.has('view');
       const idx = Math.floor(Math.random() * TOTAL_WALLPAPERS) + 1;
-      const pad = String(idx).padStart(PAD_LEN, '0');
-      const filename = `wallpaper-${pad}.png`;
+      const filename = `wallpaper-${idx}.png`;
       const url = `../wallpapers/${filename}`;
 
       if (!isViewMode) {
@@ -24,12 +22,12 @@
         window.location.replace(url);
       } else {
         // Save details for viewer mode
-        window.__randomWallpaper = { idx, pad, filename, url };
+        window.__randomWallpaper = { idx, filename, url };
       }
     })();
   </script>
   <noscript>
-    <meta http-equiv="refresh" content="0; url=../wallpapers/wallpaper-00001.png">
+    <meta http-equiv="refresh" content="0; url=../wallpapers/wallpaper-1.png">
   </noscript>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -109,10 +107,10 @@
   </main>
   <script>
     if (window.__randomWallpaper) {
-      const { idx, pad, filename, url } = window.__randomWallpaper;
+      const { idx, filename, url } = window.__randomWallpaper;
       document.getElementById('wallpaper-img').src = url;
       document.getElementById('wallpaper-img').alt = filename;
-      document.getElementById('wp-title').textContent = `Wallpaper #${pad}`;
+      document.getElementById('wp-title').textContent = `Wallpaper #${idx}`;
       const dl = document.getElementById('download-btn');
       dl.href = url;
       dl.setAttribute('download', filename);

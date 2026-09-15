@@ -43,11 +43,6 @@
       font-weight: 700;
       letter-spacing: -0.02em;
     }
-    .title-group p {
-      color: var(--text-muted);
-      font-size: 0.88rem;
-      margin-top: 0.25rem;
-    }
     .actions {
       display: flex;
       flex-wrap: wrap;
@@ -190,6 +185,7 @@
     <div class="actions">
       <a href="random/" class="btn primary" title="Gives a direct random wallpaper">/random</a>
       <a href="random/?view=1" class="btn" title="View random wallpaper interactively">Random Viewer</a>
+      <a href="count" class="btn" target="_blank" title="API returning only number of wallpapers">Count API</a>
       <a href="wallpapers.json" class="btn" target="_blank">API JSON</a>
       <input type="number" id="jump-input" class="search-box" min="1" max="10000" placeholder="Go to # (1-10000)...">
     </div>
@@ -199,7 +195,7 @@
     <div class="toolbar-group">
       <span id="counter-text">Showing wallpapers</span>
       <span style="opacity: 0.35; margin: 0 0.35rem;">|</span>
-      <span>Updated: 2026-09-15 06:28 UTC</span>
+      <span>Updated: 2026-09-15 06:51 UTC</span>
     </div>
     <div class="toolbar-group">
       <span>Per page:</span>
@@ -225,7 +221,6 @@
 
   <script>
     const TOTAL_WALLPAPERS = 10000;
-    const PAD_LEN = 5;
     const WP_DIR = "wallpapers";
     let pageSize = 60;
     let currentPage = 1;
@@ -252,8 +247,7 @@
 
       const fragment = document.createDocumentFragment();
       for (let i = startIdx; i <= endIdx; i++) {
-        const pad = String(i).padStart(PAD_LEN, '0');
-        const filename = `wallpaper-${pad}.png`;
+        const filename = `wallpaper-${i}.png`;
         const path = `${WP_DIR}/${filename}`;
 
         const card = document.createElement('div');
@@ -263,11 +257,11 @@
         card.innerHTML = `
           <div class="img-wrap">
             <a href="${path}" target="_blank" rel="noopener">
-              <img src="${path}" alt="Wallpaper #${pad}" loading="lazy" width="3840" height="2160">
+              <img src="${path}" alt="Wallpaper #${i}" loading="lazy" width="3840" height="2160">
             </a>
           </div>
           <div class="card-footer">
-            <span class="card-id">#${pad}</span>
+            <span class="card-id">#${i}</span>
             <div class="card-links">
               <a href="${path}" target="_blank" rel="noopener">View 4K</a>
               <a href="${path}" download="${filename}">Download</a>
@@ -353,8 +347,9 @@
       <p>JavaScript is disabled. Explore wallpapers directly:</p>
       <ul style="margin:1rem 0 0 1.5rem;">
         <li><a href="random/" style="color:#6366f1;">Get a Random Wallpaper (/random)</a></li>
+        <li><a href="count" style="color:#6366f1;">View Wallpaper Count API (/count)</a></li>
         <li><a href="wallpapers.json" style="color:#6366f1;">View wallpapers.json manifest</a></li>
-        <li><a href="wallpapers/wallpaper-00001.png" style="color:#6366f1;">View Wallpaper #00001</a></li>
+        <li><a href="wallpapers/wallpaper-1.png" style="color:#6366f1;">View Wallpaper #1</a></li>
       </ul>
     </div>
   </noscript>
