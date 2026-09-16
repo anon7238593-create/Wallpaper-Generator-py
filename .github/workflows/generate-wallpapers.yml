@@ -31,24 +31,31 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            requirements.txt
+            wallpaper-generator.py
+            favicon.png
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Checkout artifacts branch (preserve existing wallpapers)
         uses: actions/checkout@v4
         with:
           ref: artifacts
           path: dist
+          fetch-depth: 1
         continue-on-error: true
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
 
       - name: Generate wallpapers and build site
         env:
@@ -77,19 +84,6 @@ jobs:
           git commit -m "Add $COUNT wallpapers [total: $TOTAL] [$(date -u +'%Y-%m-%d %H:%M:%S UTC')]" || echo "No new changes to commit"
           git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" artifacts
 
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: generate
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Checkout artifacts branch
-        uses: actions/checkout@v4
-        with:
-          ref: artifacts
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -98,8 +92,16 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: 'dist'
 
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: generate
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
